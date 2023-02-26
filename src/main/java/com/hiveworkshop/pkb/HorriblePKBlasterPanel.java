@@ -1,5 +1,6 @@
 package com.hiveworkshop.pkb;
 
+import com.hiveworkshop.pkb.util.ColorSwap;
 import com.hiveworkshop.wc3.gui.ExceptionPopup;
 import com.hiveworkshop.wc3.gui.util.ColorChooserIcon;
 import org.slf4j.Logger;
@@ -83,8 +84,13 @@ public class HorriblePKBlasterPanel extends JPanel {
         fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("Dumb PKB Baked Binary", "pkb"));
         setLayout(new BorderLayout());
 
-        final JTabbedPane tabbedPane = new JTabbedPane();
-        add(tabbedPane);
+        JTabbedPane globalTabbedPane = new JTabbedPane();
+        add(globalTabbedPane);
+
+        globalTabbedPane.addTab("Simple", new SimpleTabbedPanel());
+
+        JTabbedPane advancedPane = new JTabbedPane();
+        globalTabbedPane.addTab("Advanced", advancedPane);
 
         nodeListModel = new DefaultListModel<>();
         nodesList = new JList<>(nodeListModel);
@@ -201,7 +207,7 @@ public class HorriblePKBlasterPanel extends JPanel {
 
         final JSplitPane nodesSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, new JScrollPane(nodesList),
                 editNodePanel);
-        tabbedPane.addTab("Nodes", nodesSplitPane);
+        advancedPane.addTab("Nodes", nodesSplitPane);
 
         stringListModel = new DefaultListModel<>();
         stringsList = new JList<>(stringListModel);
@@ -235,605 +241,333 @@ public class HorriblePKBlasterPanel extends JPanel {
 
         final JSplitPane stringsSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, new JScrollPane(stringsList),
                 editStringPanel);
-        tabbedPane.addTab("Strings", stringsSplitPane);
+        advancedPane.addTab("Strings", stringsSplitPane);
 
         final JTabbedPane automationTabbedPane = new JTabbedPane(SwingConstants.LEFT);
 
         {
-            final JPanel colorSwap = new JPanel();
-            final JLabel introNote1 = new JLabel(
-                    "This will swap data in the Group 17 or Group 18 of 'CParticleNodeSamplerData_Curve' nodes.");
-            colorSwap.add(introNote1);
-            final JLabel introNote2 = new JLabel(
-                    "It might miss data or edit things that aren't colors, but it seems to work pretty well!");
-            colorSwap.add(introNote2);
-            final JLabel implNote1 = new JLabel(
-                    "We assume the array of 12 floats for Group 17 is {{RGBA},{RGBA},{RGBA}}");
-            colorSwap.add(implNote1);
-            implNote1.setFont(implNote1.getFont().deriveFont(8f));
-            final JLabel implNote2 = new JLabel(
-                    "We assume the array of 24 floats for Group 18 is {{RGBA},{RGBA},{RGBA},{RGBA},{RGBA},{RGBA}}");
-            implNote2.setFont(implNote2.getFont().deriveFont(8f));
-            colorSwap.add(implNote2);
-
-            final JLabel newRedLabel = new JLabel("New Red:");
-            final JComboBox<OldColor> newRedSourceBox = new JComboBox<>(OldColor.values());
-            newRedSourceBox.setSelectedItem(OldColor.OLD_RED);
-            final Dimension maximumSize = new Dimension(9999, 25);
-            newRedSourceBox.setMaximumSize(maximumSize);
-            final JLabel newGreenLabel = new JLabel("New Green:");
-            final JComboBox<OldColor> newGreenSourceBox = new JComboBox<>(OldColor.values());
-            newGreenSourceBox.setSelectedItem(OldColor.OLD_GREEN);
-            newGreenSourceBox.setMaximumSize(maximumSize);
-            final JLabel newBlueLabel = new JLabel("New Blue:");
-            final JComboBox<OldColor> newBlueSourceBox = new JComboBox<>(OldColor.values());
-            newBlueSourceBox.setSelectedItem(OldColor.OLD_BLUE);
-            newBlueSourceBox.setMaximumSize(maximumSize);
-            final JLabel newAlphaLabel = new JLabel("New Alpha:");
-            final JComboBox<OldColor> newAlphaSourceBox = new JComboBox<>(OldColor.values());
-            newAlphaSourceBox.setSelectedItem(OldColor.OLD_ALPHA);
-            newAlphaSourceBox.setMaximumSize(maximumSize);
-            final JButton performSwap = new JButton("Perform Swap!");
-            performSwap.addActionListener(e -> {
-                try {
-                    if (currentPKB == null) {
-                        JOptionPane.showMessageDialog(HorriblePKBlasterPanel.this, "No file loaded!", "Error",
-                                JOptionPane.ERROR_MESSAGE);
-                    } else {
-                        final OldColor newRedIndex = (OldColor) newRedSourceBox.getSelectedItem();
-                        final OldColor newGreenIndex = (OldColor) newGreenSourceBox.getSelectedItem();
-                        final OldColor newBlueIndex = (OldColor) newBlueSourceBox.getSelectedItem();
-                        final OldColor newAlphaIndex = (OldColor) newAlphaSourceBox.getSelectedItem();
-                        final List<SwappedColor> swappedColors = new ArrayList<>();
-                        for (final PKBChunk chunk : currentPKB.getChunks()) {
-                            if (chunk instanceof final UnknownChunk c) {
-                                if (currentPKB.getStrings().get(c.getChunkType())
-                                        .equals("CParticleNodeSamplerData_Curve")) {
-                                    final ByteBuffer data = c.getChunkData();
-                                    data.order(ByteOrder.LITTLE_ENDIAN);
-                                    data.clear();
-                                    final short groupCount = data.getShort();
-                                    LOGGER.debug("Curve with groupCount={}", groupCount);
-                                    for (int groupIndex = 0; groupIndex < groupCount; groupIndex++) {
-                                        final short groupType = data.getShort();
-                                        LOGGER.debug("\tGroup {}", groupType);
-                                        switch (groupType) {
-                                            case 0, 1 -> {
-                                                final int unknown1 = data.getInt();
-                                                final int unknown2 = data.getInt();
-                                                final int nameStringIndex = data.getInt();
-                                                LOGGER.debug("\t\tUnknown1: {}", unknown1);
-                                                LOGGER.debug("\t\tUnknown2: {}", unknown2);
-                                                LOGGER.debug("\t\tName: {}", currentPKB.getStrings().get(nameStringIndex));
-                                            }
-                                            case 7 -> {
-                                                final int unknown = data.getInt();
-                                                final int propertyIndex = data.getInt();
-                                                LOGGER.debug("\t\tUnknown: {}", unknown);
-                                                LOGGER.debug("\t\tPropertyIndex: {}", propertyIndex);
-                                            }
-                                            case 9 -> {
-                                                final int unknown = data.getInt();
-                                                LOGGER.debug("\t\tUnknown:{}", unknown);
-                                            }
-                                            case 10 -> {
-                                                final int unknown = data.getInt();
-                                                LOGGER.debug("\t\tUnknown:{}", unknown);
-                                            }
-                                            case 11 -> {
-                                                final int unknown = data.getInt();
-                                                LOGGER.debug("\t\tUnknown:{}", unknown);
-                                            }
-                                            case 14 -> {
-                                                final int unknown = data.getInt();
-                                                LOGGER.debug("\t\tUnknown:{}", unknown);
-                                            }
-                                            case 16 -> {
-                                                final int numberOfFloats = data.getInt();
-                                                LOGGER.debug("\t\tnumberOfFloats:{}", numberOfFloats);
-                                                final float[] floats = new float[numberOfFloats];
-                                                for (int i = 0; i < numberOfFloats; i++) {
-                                                    floats[i] = data.getFloat();
-                                                }
-                                                LOGGER.debug("\t\t:{}", Arrays.toString(floats));
-                                            }
-                                            case 17 -> {
-                                                final int numberOfFloats = data.getInt();
-                                                LOGGER.debug("\t\tnumberOfFloats:{}", numberOfFloats);
-                                                if (numberOfFloats == 12) {
-                                                    final int floatStartPos = data.position();
-                                                    for (int i = 0; i < 3; i++) {
-                                                        final float oldRed = data
-                                                                .getFloat(floatStartPos + i * 16);
-                                                        final float oldGreen = data
-                                                                .getFloat(floatStartPos + i * 16 + 4);
-                                                        final float oldBlue = data
-                                                                .getFloat(floatStartPos + i * 16 + 8);
-                                                        final float oldAlpha = data
-                                                                .getFloat(floatStartPos + i * 16 + 12);
-                                                        final float[] oldColors = {oldRed, oldGreen, oldBlue,
-                                                                oldAlpha};
-                                                        assert newRedIndex != null;
-                                                        final float newRed = newRedIndex.getValue(oldColors);
-                                                        data.putFloat(floatStartPos + i * 16, newRed);
-                                                        assert newGreenIndex != null;
-                                                        final float newGreen = newGreenIndex.getValue(oldColors);
-                                                        data.putFloat(floatStartPos + i * 16 + 4, newGreen);
-                                                        assert newBlueIndex != null;
-                                                        final float newBlue = newBlueIndex.getValue(oldColors);
-                                                        data.putFloat(floatStartPos + i * 16 + 8, newBlue);
-                                                        assert newAlphaIndex != null;
-                                                        final float newAlpha = newAlphaIndex.getValue(oldColors);
-                                                        data.putFloat(floatStartPos + i * 16 + 12, newAlpha);
-                                                        swappedColors.add(new SwappedColor(
-                                                                createColor(oldRed, oldGreen, oldBlue, oldAlpha),
-                                                                createColor(newRed, newGreen, newBlue, newAlpha)));
-
-                                                    }
-                                                    data.position(floatStartPos + 3 * 16);
-                                                } else {
-                                                    final float[] floats = new float[numberOfFloats];
-                                                    for (int i = 0; i < numberOfFloats; i++) {
-                                                        floats[i] = data.getFloat();
-                                                    }
-                                                    LOGGER.debug("\t\t:{}", Arrays.toString(floats));
-                                                }
-                                            }
-                                            case 18 -> {
-                                                final int numberOfFloats = data.getInt();
-                                                LOGGER.debug("\t\tnumberOfFloats:{}", numberOfFloats);
-                                                if (numberOfFloats == 24) {
-                                                    final int floatStartPos = data.position();
-                                                    for (int i = 0; i < 6; i++) {
-                                                        final float oldRed = data
-                                                                .getFloat(floatStartPos + i * 16);
-                                                        final float oldGreen = data
-                                                                .getFloat(floatStartPos + i * 16 + 4);
-                                                        final float oldBlue = data
-                                                                .getFloat(floatStartPos + i * 16 + 8);
-                                                        final float oldAlpha = data
-                                                                .getFloat(floatStartPos + i * 16 + 12);
-                                                        final float[] oldColors = {oldRed, oldGreen, oldBlue,
-                                                                oldAlpha};
-                                                        assert newRedIndex != null;
-                                                        final float newRed = newRedIndex.getValue(oldColors);
-                                                        data.putFloat(floatStartPos + i * 16, newRed);
-                                                        assert newGreenIndex != null;
-                                                        final float newGreen = newGreenIndex.getValue(oldColors);
-                                                        data.putFloat(floatStartPos + i * 16 + 4, newGreen);
-                                                        assert newBlueIndex != null;
-                                                        final float newBlue = newBlueIndex.getValue(oldColors);
-                                                        data.putFloat(floatStartPos + i * 16 + 8, newBlue);
-                                                        assert newAlphaIndex != null;
-                                                        final float newAlpha = newAlphaIndex.getValue(oldColors);
-                                                        data.putFloat(floatStartPos + i * 16 + 12, newAlpha);
-                                                        swappedColors.add(new SwappedColor(
-                                                                createColor(oldRed, oldGreen, oldBlue, oldAlpha),
-                                                                createColor(newRed, newGreen, newBlue, newAlpha)));
-                                                    }
-                                                    data.position(floatStartPos + 24 * 4);
-                                                } else if (numberOfFloats == 20) {
-                                                    final int floatStartPos = data.position();
-                                                    for (int i = 0; i < 5; i++) {
-                                                        final float oldRed = data
-                                                                .getFloat(floatStartPos + i * 16);
-                                                        final float oldGreen = data
-                                                                .getFloat(floatStartPos + i * 16 + 4);
-                                                        final float oldBlue = data
-                                                                .getFloat(floatStartPos + i * 16 + 8);
-                                                        final float oldAlpha = data
-                                                                .getFloat(floatStartPos + i * 16 + 12);
-                                                        final float[] oldColors = {oldRed, oldGreen, oldBlue,
-                                                                oldAlpha};
-                                                        assert newRedIndex != null;
-                                                        final float newRed = newRedIndex.getValue(oldColors);
-                                                        data.putFloat(floatStartPos + i * 16, newRed);
-                                                        assert newGreenIndex != null;
-                                                        final float newGreen = newGreenIndex.getValue(oldColors);
-                                                        data.putFloat(floatStartPos + i * 16 + 4, newGreen);
-                                                        assert newBlueIndex != null;
-                                                        final float newBlue = newBlueIndex.getValue(oldColors);
-                                                        data.putFloat(floatStartPos + i * 16 + 8, newBlue);
-                                                        assert newAlphaIndex != null;
-                                                        final float newAlpha = newAlphaIndex.getValue(oldColors);
-                                                        data.putFloat(floatStartPos + i * 16 + 12, newAlpha);
-                                                        swappedColors.add(new SwappedColor(
-                                                                createColor(oldRed, oldGreen, oldBlue, oldAlpha),
-                                                                createColor(newRed, newGreen, newBlue, newAlpha)));
-                                                    }
-                                                    data.position(floatStartPos + 20 * 4);
-                                                } else {
-                                                    final float[] floats = new float[numberOfFloats];
-                                                    for (int i = 0; i < numberOfFloats; i++) {
-                                                        floats[i] = data.getFloat();
-                                                    }
-                                                    LOGGER.debug("\t\t:{}", Arrays.toString(floats));
-                                                }
-                                            }
-                                            case 19 -> {
-                                                final int numberOfFloats = data.getInt();
-                                                LOGGER.debug("\t\tnumberOfFloats:{}", numberOfFloats);
-                                                final float[] floats = new float[numberOfFloats];
-                                                for (int i = 0; i < numberOfFloats; i++) {
-                                                    floats[i] = data.getFloat();
-                                                }
-                                                LOGGER.debug("\t\t:{}", Arrays.toString(floats));
-                                            }
-                                            default -> throw new IllegalStateException("Unknown group type: " + groupType);
-                                        }
-                                    }
-                                    data.clear();
-                                }
-                            }
-                        }
-                        final ColorSwapPreviewPanel colorSwapPreviewPanel = new ColorSwapPreviewPanel(
-                                swappedColors);
-                        final JScrollPane preview = new JScrollPane(colorSwapPreviewPanel);
-                        preview.setPreferredSize(new Dimension(800, 600));
-                        JOptionPane.showMessageDialog(HorriblePKBlasterPanel.this, preview);
-                    }
-                } catch (final Exception exc) {
-                    exc.printStackTrace();
-                    ExceptionPopup.display(exc);
-                }
-            });
-
-            final GroupLayout colorSwapLayout = new GroupLayout(colorSwap);
-            colorSwapLayout.setHorizontalGroup(colorSwapLayout.createParallelGroup().addComponent(introNote1)
-                    .addComponent(introNote2).addComponent(implNote1).addComponent(implNote2)
-                    .addGroup(colorSwapLayout.createSequentialGroup().addComponent(newRedLabel)
-                            .addComponent(newRedSourceBox))
-                    .addGroup(colorSwapLayout.createSequentialGroup().addComponent(newGreenLabel)
-                            .addComponent(newGreenSourceBox))
-                    .addGroup(colorSwapLayout.createSequentialGroup().addComponent(newBlueLabel)
-                            .addComponent(newBlueSourceBox))
-                    .addGroup(colorSwapLayout.createSequentialGroup().addComponent(newAlphaLabel)
-                            .addComponent(newAlphaSourceBox))
-                    .addComponent(performSwap));
-            colorSwapLayout.setVerticalGroup(colorSwapLayout.createSequentialGroup().addComponent(introNote1)
-                    .addComponent(introNote2).addComponent(implNote1).addComponent(implNote2)
-                    .addGroup(colorSwapLayout.createParallelGroup().addComponent(newRedLabel)
-                            .addComponent(newRedSourceBox))
-                    .addGroup(colorSwapLayout.createParallelGroup().addComponent(newGreenLabel)
-                            .addComponent(newGreenSourceBox))
-                    .addGroup(colorSwapLayout.createParallelGroup().addComponent(newBlueLabel)
-                            .addComponent(newBlueSourceBox))
-                    .addGroup(colorSwapLayout.createParallelGroup().addComponent(newAlphaLabel)
-                            .addComponent(newAlphaSourceBox))
-                    .addComponent(performSwap));
-            colorSwap.setLayout(colorSwapLayout);
+            final JPanel colorSwap = createColorSwapPanel();
 
             automationTabbedPane.addTab("Sampler Data Color Swap", colorSwap);
         }
 
         {
-            final JPanel colorize = new JPanel();
-            final JLabel introNote1 = new JLabel(
-                    "This will overwrite data in the Group 17 or Group 18 of 'CParticleNodeSamplerData_Curve' nodes.");
-            colorize.add(introNote1);
-            final JLabel introNote2 = new JLabel(
-                    "It might miss data or edit things that aren't colors, but it seems to work pretty well!");
-            colorize.add(introNote2);
-            final JLabel implNote1 = new JLabel(
-                    "We assume the array of 12 floats for Group 17 is {{RGBA},{RGBA},{RGBA}}");
-            colorize.add(implNote1);
-            implNote1.setFont(implNote1.getFont().deriveFont(8f));
-            final JLabel implNote2 = new JLabel(
-                    "We assume the array of 24 floats for Group 18 is {{RGBA},{RGBA},{RGBA},{RGBA},{RGBA},{RGBA}}");
-            implNote2.setFont(implNote2.getFont().deriveFont(8f));
-            colorize.add(implNote2);
-
-            final ColorChooserIcon colorChooserIcon = new ColorChooserIcon(currentColorizeColor, color -> currentColorizeColor = color);
-            final JLabel newRedLabel = new JLabel("New Color:");
-            final JButton performSwap = new JButton("Perform Colorize!");
-            performSwap.addActionListener(e -> {
-                try {
-                    if (currentPKB == null) {
-                        JOptionPane.showMessageDialog(HorriblePKBlasterPanel.this, "No file loaded!", "Error",
-                                JOptionPane.ERROR_MESSAGE);
-                    } else {
-                        final List<SwappedColor> swappedColors = new ArrayList<>();
-                        for (final PKBChunk chunk : currentPKB.getChunks()) {
-                            if (chunk instanceof final UnknownChunk c) {
-                                final String chunkTypeName = currentPKB.getStrings().get(c.getChunkType());
-                                if (chunkTypeName.equals("CParticleNodeSamplerData_Curve")) {
-                                    final ByteBuffer data = c.getChunkData();
-                                    data.order(ByteOrder.LITTLE_ENDIAN);
-                                    data.clear();
-                                    final short groupCount = data.getShort();
-                                    LOGGER.debug("Curve with groupCount={}", groupCount);
-                                    for (int groupIndex = 0; groupIndex < groupCount; groupIndex++) {
-                                        final short groupType = data.getShort();
-                                        LOGGER.debug("\tGroup{}", groupType);
-                                        switch (groupType) {
-                                            case 0, 1 -> {
-                                                final int unknown1 = data.getInt();
-                                                final int unknown2 = data.getInt();
-                                                final int nameStringIndex = data.getInt();
-                                                LOGGER.debug("\t\tUnknown1:{}", unknown1);
-                                                LOGGER.debug("\t\tUnknown2:{}", unknown2);
-                                                LOGGER.debug("\t\tName:{}", currentPKB.getStrings().get(nameStringIndex));
-                                            }
-                                            case 7 -> {
-                                                final int unknown = data.getInt();
-                                                final int propertyIndex = data.getInt();
-                                                LOGGER.debug("\t\tUnknown:{}", unknown);
-                                                LOGGER.debug("\t\tPropertyIndex:{}", propertyIndex);
-                                            }
-                                            case 9 -> {
-                                                final int unknown = data.getInt();
-                                                LOGGER.debug("\t\tUnknown:{}", unknown);
-                                            }
-                                            case 10 -> {
-                                                final int unknown = data.getInt();
-                                                LOGGER.debug("\t\tUnknown:{}", unknown);
-                                            }
-                                            case 11 -> {
-                                                final int unknown = data.getInt();
-                                                LOGGER.debug("\t\tUnknown:{}", unknown);
-                                            }
-                                            case 14 -> {
-                                                final int unknown = data.getInt();
-                                                LOGGER.debug("\t\tUnknown:{}", unknown);
-                                            }
-                                            case 16 -> {
-                                                final int numberOfFloats = data.getInt();
-                                                LOGGER.debug("\t\tnumberOfFloats:{}", numberOfFloats);
-                                                final float[] floats = new float[numberOfFloats];
-                                                for (int i = 0; i < numberOfFloats; i++) {
-                                                    floats[i] = data.getFloat();
-                                                }
-                                                LOGGER.debug("\t\t:{}", Arrays.toString(floats));
-                                            }
-                                            case 17 -> {
-                                                final int numberOfFloats = data.getInt();
-                                                LOGGER.debug("\t\tnumberOfFloats:{}", numberOfFloats);
-                                                if (numberOfFloats == 12) {
-                                                    final int floatStartPos = data.position();
-                                                    for (int i = 0; i < 3; i++) {
-                                                        final float oldRed = data
-                                                                .getFloat(floatStartPos + i * 16);
-                                                        final float oldGreen = data
-                                                                .getFloat(floatStartPos + i * 16 + 4);
-                                                        final float oldBlue = data
-                                                                .getFloat(floatStartPos + i * 16 + 8);
-                                                        final float avgColor = (oldRed + oldGreen + oldBlue) / 3;
-                                                        final float newFactor = Math.signum(avgColor) * Math.max(
-                                                                Math.max(Math.abs(oldRed), Math.abs(oldGreen)),
-                                                                Math.abs(oldBlue));
-
-                                                        final float oldAlpha = data
-                                                                .getFloat(floatStartPos + i * 16 + 12);
-                                                        final float newRed = newFactor * currentColorizeColor.getRed()
-                                                                / 255f;
-                                                        data.putFloat(floatStartPos + i * 16, newRed);
-                                                        final float newGreen = newFactor
-                                                                * currentColorizeColor.getGreen() / 255f;
-                                                        data.putFloat(floatStartPos + i * 16 + 4, newGreen);
-                                                        final float newBlue = newFactor
-                                                                * currentColorizeColor.getBlue() / 255f;
-                                                        data.putFloat(floatStartPos + i * 16 + 8, newBlue);
-                                                        swappedColors.add(new SwappedColor(
-                                                                createColor(oldRed, oldGreen, oldBlue, oldAlpha),
-                                                                createColor(newRed, newGreen, newBlue, oldAlpha)));
-
-                                                    }
-                                                    data.position(floatStartPos + 3 * 16);
-                                                } else {
-                                                    final float[] floats = new float[numberOfFloats];
-                                                    for (int i = 0; i < numberOfFloats; i++) {
-                                                        floats[i] = data.getFloat();
-                                                    }
-                                                    LOGGER.debug("\t\t:{}", Arrays.toString(floats));
-                                                }
-                                            }
-                                            case 18 -> {
-                                                final int numberOfFloats = data.getInt();
-                                                LOGGER.debug("\t\tnumberOfFloats:{}", numberOfFloats);
-                                                if (numberOfFloats == 24) {
-                                                    final int floatStartPos = data.position();
-                                                    for (int i = 0; i < 6; i++) {
-                                                        final float oldRed = data
-                                                                .getFloat(floatStartPos + i * 16);
-                                                        final float oldGreen = data
-                                                                .getFloat(floatStartPos + i * 16 + 4);
-                                                        final float oldBlue = data
-                                                                .getFloat(floatStartPos + i * 16 + 8);
-                                                        final float avgColor = (oldRed + oldGreen + oldBlue) / 3;
-                                                        final float newFactor = Math.signum(avgColor) * Math.max(
-                                                                Math.max(Math.abs(oldRed), Math.abs(oldGreen)),
-                                                                Math.abs(oldBlue));
-
-                                                        final float oldAlpha = data
-                                                                .getFloat(floatStartPos + i * 16 + 12);
-                                                        final float newRed = newFactor * currentColorizeColor.getRed()
-                                                                / 255f;
-                                                        data.putFloat(floatStartPos + i * 16, newRed);
-                                                        final float newGreen = newFactor
-                                                                * currentColorizeColor.getGreen() / 255f;
-                                                        data.putFloat(floatStartPos + i * 16 + 4, newGreen);
-                                                        final float newBlue = newFactor
-                                                                * currentColorizeColor.getBlue() / 255f;
-                                                        data.putFloat(floatStartPos + i * 16 + 8, newBlue);
-                                                        swappedColors.add(new SwappedColor(
-                                                                createColor(oldRed, oldGreen, oldBlue, oldAlpha),
-                                                                createColor(newRed, newGreen, newBlue, oldAlpha)));
-                                                    }
-                                                    data.position(floatStartPos + 24 * 4);
-                                                } else if (numberOfFloats == 20) {
-                                                    final int floatStartPos = data.position();
-                                                    for (int i = 0; i < 5; i++) {
-                                                        final float oldRed = data
-                                                                .getFloat(floatStartPos + i * 16);
-                                                        final float oldGreen = data
-                                                                .getFloat(floatStartPos + i * 16 + 4);
-                                                        final float oldBlue = data
-                                                                .getFloat(floatStartPos + i * 16 + 8);
-                                                        final float avgColor = (oldRed + oldGreen + oldBlue) / 3;
-                                                        final float newFactor = Math.signum(avgColor) * Math.max(
-                                                                Math.max(Math.abs(oldRed), Math.abs(oldGreen)),
-                                                                Math.abs(oldBlue));
-
-                                                        final float oldAlpha = data
-                                                                .getFloat(floatStartPos + i * 16 + 12);
-                                                        final float newRed = newFactor * currentColorizeColor.getRed()
-                                                                / 255f;
-                                                        data.putFloat(floatStartPos + i * 16, newRed);
-                                                        final float newGreen = newFactor
-                                                                * currentColorizeColor.getGreen() / 255f;
-                                                        data.putFloat(floatStartPos + i * 16 + 4, newGreen);
-                                                        final float newBlue = newFactor
-                                                                * currentColorizeColor.getBlue() / 255f;
-                                                        data.putFloat(floatStartPos + i * 16 + 8, newBlue);
-                                                        swappedColors.add(new SwappedColor(
-                                                                createColor(oldRed, oldGreen, oldBlue, oldAlpha),
-                                                                createColor(newRed, newGreen, newBlue, oldAlpha)));
-                                                    }
-                                                    data.position(floatStartPos + 20 * 4);
-                                                } else {
-                                                    final float[] floats = new float[numberOfFloats];
-                                                    for (int i = 0; i < numberOfFloats; i++) {
-                                                        floats[i] = data.getFloat();
-                                                    }
-                                                    LOGGER.debug("\t\t:{}", Arrays.toString(floats));
-                                                }
-                                            }
-                                            case 19 -> {
-                                                final int numberOfFloats = data.getInt();
-                                                LOGGER.debug("\t\tnumberOfFloats:{}", numberOfFloats);
-                                                final float[] floats = new float[numberOfFloats];
-                                                for (int i = 0; i < numberOfFloats; i++) {
-                                                    floats[i] = data.getFloat();
-                                                }
-                                                LOGGER.debug("\t\t:{}", Arrays.toString(floats));
-                                            }
-                                            default -> throw new IllegalStateException(
-                                                    "Unknown group type in 'CParticleNodeSamplerData_Curve': "
-                                                            + groupType);
-                                        }
-                                    }
-                                    data.clear();
-                                } else if (currentPKB.getVersion().likelyToUseCLayerCompileCache() && chunkTypeName.equals("CLayerCompileCache")) {
-                                    final ByteBuffer data = c.getChunkData();
-                                    data.order(ByteOrder.LITTLE_ENDIAN);
-                                    data.clear();
-                                    final short groupCount = data.getShort();
-                                    LOGGER.debug("CLayerCompileCache with groupCount={}", groupCount);
-                                    for (int groupIndex = 0; groupIndex < groupCount; groupIndex++) {
-                                        final short groupType = data.getShort();
-                                        LOGGER.debug("\tGroup{}", groupType);
-                                        switch (groupType) {
-                                            case 0, 1 -> {
-                                                final int numberOfGroups = data.getInt();
-                                                LOGGER.debug("\t\tnumberOfGroups:{}", numberOfGroups);
-                                                final int floatStartPos = data.position();
-                                                for (int i = 0; i < numberOfGroups; i++) {
-                                                    final float oldRed = data.getFloat(floatStartPos + i * 16);
-                                                    final float oldGreen = data.getFloat(floatStartPos + i * 16 + 4);
-                                                    final float oldBlue = data.getFloat(floatStartPos + i * 16 + 8);
-                                                    final float oldAlpha = data.getFloat(floatStartPos + i * 16 + 12);
-                                                    if (oldRed == oldGreen && oldGreen == oldBlue) {
-                                                        continue;
-                                                    } else if (oldRed > 1.0f || oldGreen > 1.0f || oldBlue > 1.0f
-                                                            || oldAlpha > 1.0f) {
-                                                        continue;
-                                                    } else if (oldRed > 0.0f && oldRed < 0.001f
-                                                            || oldGreen > 0.0f && oldGreen < 0.001f
-                                                            || oldBlue > 0.0f && oldBlue < 0.001f
-                                                            || oldAlpha > 0.0f && oldAlpha < 0.001f) {
-                                                        continue;
-                                                    } else if (oldRed < 0.0f || oldGreen < 0.0f
-                                                            || oldBlue < 0.0f) {
-                                                        continue;
-                                                    }
-                                                    final float avgColor = (oldRed + oldGreen + oldBlue) / 3;
-                                                    final float newFactor = Math.signum(avgColor)
-                                                            * Math.max(Math.max(Math.abs(oldRed), Math.abs(oldGreen)),
-                                                            Math.abs(oldBlue));
-
-                                                    final float newRed = newFactor * currentColorizeColor.getRed()
-                                                            / 255f;
-                                                    data.putFloat(floatStartPos + i * 16, newRed);
-                                                    final float newGreen = newFactor * currentColorizeColor.getGreen()
-                                                            / 255f;
-                                                    data.putFloat(floatStartPos + i * 16 + 4, newGreen);
-                                                    final float newBlue = newFactor * currentColorizeColor.getBlue()
-                                                            / 255f;
-                                                    data.putFloat(floatStartPos + i * 16 + 8, newBlue);
-                                                    swappedColors.add(new SwappedColor(
-                                                            createColor(oldRed, oldGreen, oldBlue, oldAlpha),
-                                                            createColor(newRed, newGreen, newBlue, oldAlpha)));
-                                                }
-                                                data.position(floatStartPos + numberOfGroups * 16);
-
-                                            }
-                                            case 2, 3, 5, 7, 8, 9 -> {
-                                                final int numberOfInts = data.getInt();
-                                                LOGGER.debug("\t\tnumberOfInts:{}", numberOfInts);
-                                                final int[] ints = new int[numberOfInts];
-                                                for (int i = 0; i < numberOfInts; i++) {
-                                                    ints[i] = data.getInt();
-                                                }
-                                                LOGGER.debug("\t\t:{}", Arrays.toString(ints));
-                                            }
-                                            case 11, 12, 16, 17, 18, 20, 21, 24, 25, 31 -> {
-                                                final int unknown = data.getInt();
-                                                LOGGER.debug("\t\tUnknown:{}", unknown);
-                                            }
-                                            case 19 -> {
-                                                final int unknown1 = data.getInt();
-                                                final int unknown2 = data.getInt();
-                                                final int unknown3 = data.getInt();
-                                                final int unknown4 = data.getInt();
-                                                LOGGER.debug("\t\tUnknown1:{}", unknown1);
-                                                LOGGER.debug("\t\tUnknown2:{}", unknown2);
-                                                LOGGER.debug("\t\tUnknown3:{}", unknown3);
-                                                LOGGER.debug("\t\tUnknown4:{}", unknown4);
-                                            }
-                                            case 13, 14, 15 -> {
-                                                final int unknown = data.get();
-                                                LOGGER.debug("\t\tUnknown:{}", unknown);
-                                            }
-                                            case 27, 28, 30 -> {
-                                                final float unknown = data.getFloat();
-                                                LOGGER.debug("\t\tUnknown:{}", unknown);
-                                            }
-                                            default -> throw new IllegalStateException(
-                                                    "Unknown group type in 'CLayerCompileCache': " + groupType);
-                                        }
-                                    }
-                                    data.clear();
-                                }
-                            }
-                        }
-                        final ColorSwapPreviewPanel colorSwapPreviewPanel = new ColorSwapPreviewPanel(
-                                swappedColors);
-                        final JScrollPane preview = new JScrollPane(colorSwapPreviewPanel);
-                        preview.setPreferredSize(new Dimension(800, 600));
-                        JOptionPane.showMessageDialog(HorriblePKBlasterPanel.this, preview);
-                    }
-                } catch (final Exception exc) {
-                    exc.printStackTrace();
-                    ExceptionPopup.display(exc);
-                }
-            });
-
-            final GroupLayout colorSwapLayout = new GroupLayout(colorize);
-            colorSwapLayout.setHorizontalGroup(colorSwapLayout.createParallelGroup().addComponent(introNote1)
-                    .addComponent(introNote2).addComponent(implNote1).addComponent(implNote2).addGroup(colorSwapLayout
-                            .createSequentialGroup().addComponent(newRedLabel).addComponent(colorChooserIcon))
-                    .addComponent(performSwap));
-            colorSwapLayout.setVerticalGroup(colorSwapLayout.createSequentialGroup().addComponent(introNote1)
-                    .addComponent(introNote2).addComponent(implNote1).addComponent(implNote2).addGroup(colorSwapLayout
-                            .createParallelGroup().addComponent(newRedLabel).addComponent(colorChooserIcon))
-                    .addComponent(performSwap));
-            colorize.setLayout(colorSwapLayout);
-
+            JPanel colorize = createColorizePanel();
             automationTabbedPane.addTab("Sampler Data Colorize", colorize);
         }
 
-        tabbedPane.addTab("Automation", automationTabbedPane);
+        advancedPane.addTab("Automation", automationTabbedPane);
+    }
 
+    private JPanel createColorSwapPanel() {
+        final JPanel colorSwap = new JPanel();
+        final JLabel introNote1 = new JLabel(
+                "This will swap data in the Group 17 or Group 18 of 'CParticleNodeSamplerData_Curve' nodes.");
+        colorSwap.add(introNote1);
+        final JLabel introNote2 = new JLabel(
+                "It might miss data or edit things that aren't colors, but it seems to work pretty well!");
+        colorSwap.add(introNote2);
+        final JLabel implNote1 = new JLabel(
+                "We assume the array of 12 floats for Group 17 is {{RGBA},{RGBA},{RGBA}}");
+        colorSwap.add(implNote1);
+        implNote1.setFont(implNote1.getFont().deriveFont(8f));
+        final JLabel implNote2 = new JLabel(
+                "We assume the array of 24 floats for Group 18 is {{RGBA},{RGBA},{RGBA},{RGBA},{RGBA},{RGBA}}");
+        implNote2.setFont(implNote2.getFont().deriveFont(8f));
+        colorSwap.add(implNote2);
+
+        final JLabel newRedLabel = new JLabel("New Red:");
+        final JComboBox<OldColor> newRedSourceBox = new JComboBox<>(OldColor.values());
+        newRedSourceBox.setSelectedItem(OldColor.OLD_RED);
+        final Dimension maximumSize = new Dimension(9999, 25);
+        newRedSourceBox.setMaximumSize(maximumSize);
+        final JLabel newGreenLabel = new JLabel("New Green:");
+        final JComboBox<OldColor> newGreenSourceBox = new JComboBox<>(OldColor.values());
+        newGreenSourceBox.setSelectedItem(OldColor.OLD_GREEN);
+        newGreenSourceBox.setMaximumSize(maximumSize);
+        final JLabel newBlueLabel = new JLabel("New Blue:");
+        final JComboBox<OldColor> newBlueSourceBox = new JComboBox<>(OldColor.values());
+        newBlueSourceBox.setSelectedItem(OldColor.OLD_BLUE);
+        newBlueSourceBox.setMaximumSize(maximumSize);
+        final JLabel newAlphaLabel = new JLabel("New Alpha:");
+        final JComboBox<OldColor> newAlphaSourceBox = new JComboBox<>(OldColor.values());
+        newAlphaSourceBox.setSelectedItem(OldColor.OLD_ALPHA);
+        newAlphaSourceBox.setMaximumSize(maximumSize);
+        final JButton performSwap = new JButton("Perform Swap!");
+        addColorSwapActionListener(performSwap, newRedSourceBox, newGreenSourceBox, newBlueSourceBox, newAlphaSourceBox);
+
+        final GroupLayout colorSwapLayout = new GroupLayout(colorSwap);
+        colorSwapLayout.setHorizontalGroup(colorSwapLayout.createParallelGroup().addComponent(introNote1)
+                .addComponent(introNote2).addComponent(implNote1).addComponent(implNote2)
+                .addGroup(colorSwapLayout.createSequentialGroup().addComponent(newRedLabel)
+                        .addComponent(newRedSourceBox))
+                .addGroup(colorSwapLayout.createSequentialGroup().addComponent(newGreenLabel)
+                        .addComponent(newGreenSourceBox))
+                .addGroup(colorSwapLayout.createSequentialGroup().addComponent(newBlueLabel)
+                        .addComponent(newBlueSourceBox))
+                .addGroup(colorSwapLayout.createSequentialGroup().addComponent(newAlphaLabel)
+                        .addComponent(newAlphaSourceBox))
+                .addComponent(performSwap));
+        colorSwapLayout.setVerticalGroup(colorSwapLayout.createSequentialGroup().addComponent(introNote1)
+                .addComponent(introNote2).addComponent(implNote1).addComponent(implNote2)
+                .addGroup(colorSwapLayout.createParallelGroup().addComponent(newRedLabel)
+                        .addComponent(newRedSourceBox))
+                .addGroup(colorSwapLayout.createParallelGroup().addComponent(newGreenLabel)
+                        .addComponent(newGreenSourceBox))
+                .addGroup(colorSwapLayout.createParallelGroup().addComponent(newBlueLabel)
+                        .addComponent(newBlueSourceBox))
+                .addGroup(colorSwapLayout.createParallelGroup().addComponent(newAlphaLabel)
+                        .addComponent(newAlphaSourceBox))
+                .addComponent(performSwap));
+        colorSwap.setLayout(colorSwapLayout);
+        return colorSwap;
+    }
+
+    private void addColorSwapActionListener(JButton performSwap, JComboBox<OldColor> newRedSourceBox, JComboBox<OldColor> newGreenSourceBox, JComboBox<OldColor> newBlueSourceBox, JComboBox<OldColor> newAlphaSourceBox) {
+        performSwap.addActionListener(e -> {
+            try {
+                if (currentPKB == null) {
+                    JOptionPane.showMessageDialog(HorriblePKBlasterPanel.this, "No file loaded!", "Error",
+                            JOptionPane.ERROR_MESSAGE);
+                } else {
+                    final OldColor newRedIndex = (OldColor) newRedSourceBox.getSelectedItem();
+                    final OldColor newGreenIndex = (OldColor) newGreenSourceBox.getSelectedItem();
+                    final OldColor newBlueIndex = (OldColor) newBlueSourceBox.getSelectedItem();
+                    final OldColor newAlphaIndex = (OldColor) newAlphaSourceBox.getSelectedItem();
+                    final List<SwappedColor> swappedColors = new ArrayList<>();
+                    for (final PKBChunk chunk : currentPKB.getChunks()) {
+                        if (chunk instanceof final UnknownChunk c) {
+                            if (currentPKB.getStrings().get(c.getChunkType())
+                                    .equals("CParticleNodeSamplerData_Curve")) {
+                                final ByteBuffer data = c.getChunkData();
+                                data.order(ByteOrder.LITTLE_ENDIAN);
+                                data.clear();
+                                final short groupCount = data.getShort();
+                                LOGGER.debug("Curve with groupCount={}", groupCount);
+                                for (int groupIndex = 0; groupIndex < groupCount; groupIndex++) {
+                                    final short groupType = data.getShort();
+                                    LOGGER.debug("\tGroup {}", groupType);
+                                    switch (groupType) {
+                                        case 0, 1 -> {
+                                            final int unknown1 = data.getInt();
+                                            final int unknown2 = data.getInt();
+                                            final int nameStringIndex = data.getInt();
+                                            LOGGER.debug("\t\tUnknown1: {}", unknown1);
+                                            LOGGER.debug("\t\tUnknown2: {}", unknown2);
+                                            LOGGER.debug("\t\tName: {}", currentPKB.getStrings().get(nameStringIndex));
+                                        }
+                                        case 7 -> {
+                                            final int unknown = data.getInt();
+                                            final int propertyIndex = data.getInt();
+                                            LOGGER.debug("\t\tUnknown: {}", unknown);
+                                            LOGGER.debug("\t\tPropertyIndex: {}", propertyIndex);
+                                        }
+                                        case 9 -> {
+                                            final int unknown = data.getInt();
+                                            LOGGER.debug("\t\tUnknown:{}", unknown);
+                                        }
+                                        case 10 -> {
+                                            final int unknown = data.getInt();
+                                            LOGGER.debug("\t\tUnknown:{}", unknown);
+                                        }
+                                        case 11 -> {
+                                            final int unknown = data.getInt();
+                                            LOGGER.debug("\t\tUnknown:{}", unknown);
+                                        }
+                                        case 14 -> {
+                                            final int unknown = data.getInt();
+                                            LOGGER.debug("\t\tUnknown:{}", unknown);
+                                        }
+                                        case 16 -> {
+                                            final int numberOfFloats = data.getInt();
+                                            LOGGER.debug("\t\tnumberOfFloats:{}", numberOfFloats);
+                                            final float[] floats = new float[numberOfFloats];
+                                            for (int i = 0; i < numberOfFloats; i++) {
+                                                floats[i] = data.getFloat();
+                                            }
+                                            LOGGER.debug("\t\t:{}", Arrays.toString(floats));
+                                        }
+                                        case 17 -> {
+                                            final int numberOfFloats = data.getInt();
+                                            LOGGER.debug("\t\tnumberOfFloats:{}", numberOfFloats);
+                                            if (numberOfFloats == 12) {
+                                                final int floatStartPos = data.position();
+                                                for (int i = 0; i < 3; i++) {
+                                                    final float oldRed = data
+                                                            .getFloat(floatStartPos + i * 16);
+                                                    final float oldGreen = data
+                                                            .getFloat(floatStartPos + i * 16 + 4);
+                                                    final float oldBlue = data
+                                                            .getFloat(floatStartPos + i * 16 + 8);
+                                                    final float oldAlpha = data
+                                                            .getFloat(floatStartPos + i * 16 + 12);
+                                                    final float[] oldColors = {oldRed, oldGreen, oldBlue,
+                                                            oldAlpha};
+                                                    assert newRedIndex != null;
+                                                    final float newRed = newRedIndex.getValue(oldColors);
+                                                    data.putFloat(floatStartPos + i * 16, newRed);
+                                                    assert newGreenIndex != null;
+                                                    final float newGreen = newGreenIndex.getValue(oldColors);
+                                                    data.putFloat(floatStartPos + i * 16 + 4, newGreen);
+                                                    assert newBlueIndex != null;
+                                                    final float newBlue = newBlueIndex.getValue(oldColors);
+                                                    data.putFloat(floatStartPos + i * 16 + 8, newBlue);
+                                                    assert newAlphaIndex != null;
+                                                    final float newAlpha = newAlphaIndex.getValue(oldColors);
+                                                    data.putFloat(floatStartPos + i * 16 + 12, newAlpha);
+                                                    swappedColors.add(new SwappedColor(
+                                                            createColor(oldRed, oldGreen, oldBlue, oldAlpha),
+                                                            createColor(newRed, newGreen, newBlue, newAlpha)));
+
+                                                }
+                                                data.position(floatStartPos + 3 * 16);
+                                            } else {
+                                                final float[] floats = new float[numberOfFloats];
+                                                for (int i = 0; i < numberOfFloats; i++) {
+                                                    floats[i] = data.getFloat();
+                                                }
+                                                LOGGER.debug("\t\t:{}", Arrays.toString(floats));
+                                            }
+                                        }
+                                        case 18 -> {
+                                            final int numberOfFloats = data.getInt();
+                                            LOGGER.debug("\t\tnumberOfFloats:{}", numberOfFloats);
+                                            if (numberOfFloats == 24) {
+                                                final int floatStartPos = data.position();
+                                                for (int i = 0; i < 6; i++) {
+                                                    final float oldRed = data
+                                                            .getFloat(floatStartPos + i * 16);
+                                                    final float oldGreen = data
+                                                            .getFloat(floatStartPos + i * 16 + 4);
+                                                    final float oldBlue = data
+                                                            .getFloat(floatStartPos + i * 16 + 8);
+                                                    final float oldAlpha = data
+                                                            .getFloat(floatStartPos + i * 16 + 12);
+                                                    final float[] oldColors = {oldRed, oldGreen, oldBlue,
+                                                            oldAlpha};
+                                                    assert newRedIndex != null;
+                                                    final float newRed = newRedIndex.getValue(oldColors);
+                                                    data.putFloat(floatStartPos + i * 16, newRed);
+                                                    assert newGreenIndex != null;
+                                                    final float newGreen = newGreenIndex.getValue(oldColors);
+                                                    data.putFloat(floatStartPos + i * 16 + 4, newGreen);
+                                                    assert newBlueIndex != null;
+                                                    final float newBlue = newBlueIndex.getValue(oldColors);
+                                                    data.putFloat(floatStartPos + i * 16 + 8, newBlue);
+                                                    assert newAlphaIndex != null;
+                                                    final float newAlpha = newAlphaIndex.getValue(oldColors);
+                                                    data.putFloat(floatStartPos + i * 16 + 12, newAlpha);
+                                                    swappedColors.add(new SwappedColor(
+                                                            createColor(oldRed, oldGreen, oldBlue, oldAlpha),
+                                                            createColor(newRed, newGreen, newBlue, newAlpha)));
+                                                }
+                                                data.position(floatStartPos + 24 * 4);
+                                            } else if (numberOfFloats == 20) {
+                                                final int floatStartPos = data.position();
+                                                for (int i = 0; i < 5; i++) {
+                                                    final float oldRed = data
+                                                            .getFloat(floatStartPos + i * 16);
+                                                    final float oldGreen = data
+                                                            .getFloat(floatStartPos + i * 16 + 4);
+                                                    final float oldBlue = data
+                                                            .getFloat(floatStartPos + i * 16 + 8);
+                                                    final float oldAlpha = data
+                                                            .getFloat(floatStartPos + i * 16 + 12);
+                                                    final float[] oldColors = {oldRed, oldGreen, oldBlue,
+                                                            oldAlpha};
+                                                    assert newRedIndex != null;
+                                                    final float newRed = newRedIndex.getValue(oldColors);
+                                                    data.putFloat(floatStartPos + i * 16, newRed);
+                                                    assert newGreenIndex != null;
+                                                    final float newGreen = newGreenIndex.getValue(oldColors);
+                                                    data.putFloat(floatStartPos + i * 16 + 4, newGreen);
+                                                    assert newBlueIndex != null;
+                                                    final float newBlue = newBlueIndex.getValue(oldColors);
+                                                    data.putFloat(floatStartPos + i * 16 + 8, newBlue);
+                                                    assert newAlphaIndex != null;
+                                                    final float newAlpha = newAlphaIndex.getValue(oldColors);
+                                                    data.putFloat(floatStartPos + i * 16 + 12, newAlpha);
+                                                    swappedColors.add(new SwappedColor(
+                                                            createColor(oldRed, oldGreen, oldBlue, oldAlpha),
+                                                            createColor(newRed, newGreen, newBlue, newAlpha)));
+                                                }
+                                                data.position(floatStartPos + 20 * 4);
+                                            } else {
+                                                final float[] floats = new float[numberOfFloats];
+                                                for (int i = 0; i < numberOfFloats; i++) {
+                                                    floats[i] = data.getFloat();
+                                                }
+                                                LOGGER.debug("\t\t:{}", Arrays.toString(floats));
+                                            }
+                                        }
+                                        case 19 -> {
+                                            final int numberOfFloats = data.getInt();
+                                            LOGGER.debug("\t\tnumberOfFloats:{}", numberOfFloats);
+                                            final float[] floats = new float[numberOfFloats];
+                                            for (int i = 0; i < numberOfFloats; i++) {
+                                                floats[i] = data.getFloat();
+                                            }
+                                            LOGGER.debug("\t\t:{}", Arrays.toString(floats));
+                                        }
+                                        default -> throw new IllegalStateException("Unknown group type: " + groupType);
+                                    }
+                                }
+                                data.clear();
+                            }
+                        }
+                    }
+                    final ColorSwapPreviewPanel colorSwapPreviewPanel = new ColorSwapPreviewPanel(
+                            swappedColors);
+                    final JScrollPane preview = new JScrollPane(colorSwapPreviewPanel);
+                    preview.setPreferredSize(new Dimension(800, 600));
+                    JOptionPane.showMessageDialog(HorriblePKBlasterPanel.this, preview);
+                }
+            } catch (final Exception exc) {
+                exc.printStackTrace();
+                ExceptionPopup.display(exc);
+            }
+        });
+    }
+
+    private JPanel createColorizePanel() {
+        final JPanel colorize = new JPanel();
+        final JLabel introNote1 = new JLabel("This will overwrite data in the Group 17 or Group 18 of 'CParticleNodeSamplerData_Curve' nodes.");
+        colorize.add(introNote1);
+        final JLabel introNote2 = new JLabel("It might miss data or edit things that aren't colors, but it seems to work pretty well!");
+        colorize.add(introNote2);
+        final JLabel implNote1 = new JLabel("We assume the array of 12 floats for Group 17 is {{RGBA},{RGBA},{RGBA}}");
+        colorize.add(implNote1);
+        implNote1.setFont(implNote1.getFont().deriveFont(8f));
+        final JLabel implNote2 = new JLabel("We assume the array of 24 floats for Group 18 is {{RGBA},{RGBA},{RGBA},{RGBA},{RGBA},{RGBA}}");
+        implNote2.setFont(implNote2.getFont().deriveFont(8f));
+        colorize.add(implNote2);
+
+        final ColorChooserIcon colorChooserIcon = new ColorChooserIcon(currentColorizeColor, color -> currentColorizeColor = color);
+        final JLabel newRedLabel = new JLabel("New Color:");
+        final JButton performSwap = new JButton("Perform Colorize!");
+        performSwap.addActionListener(e -> ColorSwap.colorize(currentPKB, currentColorizeColor, HorriblePKBlasterPanel.this));
+
+        final GroupLayout colorSwapLayout = new GroupLayout(colorize);
+        colorSwapLayout.setHorizontalGroup(colorSwapLayout.createParallelGroup()
+                .addComponent(introNote1)
+                .addComponent(introNote2)
+                .addComponent(implNote1)
+                .addComponent(implNote2)
+                .addGroup(colorSwapLayout.createSequentialGroup()
+                        .addComponent(newRedLabel)
+                        .addComponent(colorChooserIcon))
+                .addComponent(performSwap));
+        colorSwapLayout.setVerticalGroup(colorSwapLayout.createSequentialGroup()
+                .addComponent(introNote1)
+                .addComponent(introNote2)
+                .addComponent(implNote1)
+                .addComponent(implNote2)
+                .addGroup(colorSwapLayout.createParallelGroup()
+                        .addComponent(newRedLabel)
+                        .addComponent(colorChooserIcon))
+                .addComponent(performSwap));
+        colorize.setLayout(colorSwapLayout);
+        return colorize;
     }
 
     private String getNiceName(final Object value) {
