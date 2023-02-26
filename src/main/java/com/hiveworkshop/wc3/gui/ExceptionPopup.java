@@ -1,13 +1,11 @@
 package com.hiveworkshop.wc3.gui;
 
+import javax.swing.*;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.Document;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
-
-import javax.swing.JOptionPane;
-import javax.swing.JTextPane;
-import javax.swing.text.BadLocationException;
-import javax.swing.text.Document;
 
 public class ExceptionPopup {
 	public static void display(final Throwable e) {

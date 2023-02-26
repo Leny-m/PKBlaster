@@ -1,11 +1,10 @@
 package com.hiveworkshop.pkb;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
+import com.hiveworkshop.wc3.units.objectdata.War3ID;
 
 import javax.swing.table.AbstractTableModel;
-
-import com.hiveworkshop.wc3.units.objectdata.War3ID;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 public class UnknownChunkTableModel extends AbstractTableModel {
 	private final ByteBuffer chunkData;

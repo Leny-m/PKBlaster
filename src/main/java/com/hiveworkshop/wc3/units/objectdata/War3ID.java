@@ -1,22 +1,15 @@
 package com.hiveworkshop.wc3.units.objectdata;
 
 import com.hiveworkshop.wc3.util.CharInt;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public final class War3ID implements Comparable<War3ID> {
-	public static final War3ID NONE = new War3ID(0);
-	private final int value;
-
-	public War3ID(final int value) {
-		this.value = value;
-	}
-
-	public int getValue() {
-		return value;
-	}
+public record War3ID(int value) implements Comparable<War3ID> {
+	private static final Logger LOGGER = LoggerFactory.getLogger(War3ID.class);
 
 	public static War3ID fromString(String idString) {
 		if (idString.length() == 3) {
-			System.out.println(
+			LOGGER.debug(
 					"Loaded custom data for the ability CURSE whose MetaData field, 'Crs', is the only 3 letter War3ID in the game. This might cause unexpected errors, so watch your % chance to miss in custom curse abilities carefully.");
 			idString += '\0';
 		}
@@ -50,14 +43,6 @@ public final class War3ID implements Comparable<War3ID> {
 	@Override
 	public String toString() {
 		return asStringValue();
-	}
-
-	@Override
-	public int hashCode() {
-		final int prime = 31;
-		int result = 1;
-		result = (prime * result) + value;
-		return result;
 	}
 
 	@Override
