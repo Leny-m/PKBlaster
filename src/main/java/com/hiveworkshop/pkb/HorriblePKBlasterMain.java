@@ -9,7 +9,7 @@ import java.awt.*;
 public class HorriblePKBlasterMain {
     public static void main(final String[] args) {
         SwingUtilities.invokeLater(() -> {
-            final JFrame mainFrame = new JFrame("PKBlaster Editor (v0.05) modified by Leny");
+            final JFrame mainFrame = new JFrame("PKBlaster Editor (v0.05_RC1) modified by Leny");
             mainFrame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
             final HorriblePKBlasterPanel panel = new HorriblePKBlasterPanel();
             mainFrame.setContentPane(panel);
