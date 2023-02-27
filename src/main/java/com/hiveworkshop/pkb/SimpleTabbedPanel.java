@@ -35,6 +35,11 @@ public class SimpleTabbedPanel extends JPanel {
         JButton loadFileButton = new JButton("Load file");
         add(loadFileButton);
 
+        JLabel warningLabel = new JLabel("<html>This tool is still in development and there is no current ETA on when it will be completed.<br>" +
+                "Please use this re-coloring utility at your own discretion and understand it may break files, make backups!</html>");
+        warningLabel.setForeground(Color.RED);
+        add(warningLabel);
+
         JColorChooser colorChooser = new JColorChooser();
         colorChooser.setVisible(false);
         add(colorChooser);
