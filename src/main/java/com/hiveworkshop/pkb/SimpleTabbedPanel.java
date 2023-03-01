@@ -15,6 +15,8 @@ import java.nio.channels.FileChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static com.hiveworkshop.pkb.util.ColorSwap.colorToRGB;
+
 /**
  * Simplified version of PKB UI.
  */
@@ -52,7 +54,7 @@ public class SimpleTabbedPanel extends JPanel {
 
         // file chooser
         AtomicReference<File> selectedFile = new AtomicReference<>();
-        AtomicReference<HorriblePkbParser> pkb = new AtomicReference<>();
+        AtomicReference<PKBParser> pkb = new AtomicReference<>();
         JFileChooser fileChooser = new JFileChooser();
         loadFileButton.addActionListener(e -> {
             int returnValue = fileChooser.showOpenDialog(null);
@@ -67,7 +69,7 @@ public class SimpleTabbedPanel extends JPanel {
                     try (FileChannel channel = FileChannel.open(selectedFile.get().toPath(), StandardOpenOption.READ)) {
                         channel.read(stupidBuffer2);
                         stupidBuffer2.clear();
-                        pkb.set(new HorriblePkbParser(stupidBuffer2));
+                        pkb.set(new PKBParser(stupidBuffer2));
                     } catch (IOException e1) {
                         e1.printStackTrace();
                         ExceptionPopup.display(e1);
@@ -96,9 +98,5 @@ public class SimpleTabbedPanel extends JPanel {
                 ExceptionPopup.display(e1);
             }
         });
-    }
-
-    private String colorToRGB(Color color) {
-        return String.format("RGB: %s, %s, %s", color.getRed(), color.getGreen(), color.getBlue());
     }
 }

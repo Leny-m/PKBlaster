@@ -7,6 +7,7 @@
     <groupId>com.vhausler</groupId>
     <artifactId>PKB</artifactId>
     <version>1.0-SNAPSHOT</version>
+    <description>PKBlaster, a tool designed to allow simple recolors and modifications of the PKB files used in Diablo 2 Resurrected and Warcraft III.</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
@@ -16,7 +17,7 @@
     </properties>
 
     <dependencies>
-        <!--        Logging-->
+        <!--Logging-->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
@@ -27,11 +28,26 @@
             <artifactId>slf4j-simple</artifactId>
             <version>${slf4j.version}</version>
         </dependency>
-        <!--        Lombok-->
+        <!--Lombok-->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <version>1.18.24</version>
+        </dependency>
+        <!--TESTING-->
+        <!--JUnit 5-->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-engine</artifactId>
+            <version>5.9.1</version>
+            <scope>test</scope>
+        </dependency>
+        <!--AssertJ-->
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <version>3.24.2</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
@@ -42,14 +58,15 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>com.hiveworkshop.pkb.HorriblePKBlasterMain</mainClass>
+                            <mainClass>com.hiveworkshop.pkb.PKBMain</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>
                         <descriptorRef>jar-with-dependencies</descriptorRef>
                     </descriptorRefs>
-                    <finalName>PKB_modified_by_Leny</finalName>
+                    <finalName>PKB</finalName>
                     <appendAssemblyId>false</appendAssemblyId>
+                    <outputDirectory>dist</outputDirectory>
                 </configuration>
             </plugin>
         </plugins>

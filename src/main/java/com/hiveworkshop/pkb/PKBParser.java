@@ -10,8 +10,11 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.*;
 
-public class HorriblePkbParser implements Serializable {
-    private static final Logger LOGGER = LoggerFactory.getLogger(HorriblePkbParser.class);
+/**
+ * Parses the game files.
+ */
+public class PKBParser implements Serializable {
+    private static final Logger LOGGER = LoggerFactory.getLogger(PKBParser.class);
     @Serial
     private static final long serialVersionUID = -4126242909227896130L;
     static final Map<Integer, Set<Integer>> MESSAGE_TYPES_TO_LENS = new TreeMap<>();
@@ -23,7 +26,7 @@ public class HorriblePkbParser implements Serializable {
     private final int firstMagicIdentifier;
     private final long secondMagicIdentifier;
 
-    public HorriblePkbParser(final ByteBuffer buffer) {
+    public PKBParser(final ByteBuffer buffer) {
         buffer.order(ByteOrder.LITTLE_ENDIAN);
 
         final int key1 = buffer.getInt();
@@ -42,7 +45,7 @@ public class HorriblePkbParser implements Serializable {
         firstMagicIdentifier = buffer.getInt();
         if (this.pkbVersion.hasExtraBufferData()) {
             someResurrectedIdentifier = buffer.getInt();
-            LOGGER.debug("Some resurrected identifier:{}", someResurrectedIdentifier);
+            LOGGER.trace("Some resurrected identifier:{}", someResurrectedIdentifier);
         } else {
             someResurrectedIdentifier = 0;
         }
@@ -58,17 +61,17 @@ public class HorriblePkbParser implements Serializable {
             }
             strings.add(sb.toString());
         }
-        LOGGER.debug("Finished reading strings at:{}", buffer.position());
-        LOGGER.debug("Finished with remaining:{}", buffer.remaining());
+        LOGGER.trace("Finished reading strings at:{}", buffer.position());
+        LOGGER.trace("Finished with remaining:{}", buffer.remaining());
         buffer.position(initialPosition);
         if (this.pkbVersion.hasExtraBufferData()) {
             secondMagicIdentifier = buffer.getInt();
         } else {
             secondMagicIdentifier = buffer.getLong();
         }
-        LOGGER.debug("firstmagic:{}", firstMagicIdentifier);
-        LOGGER.debug("strings offset:{}", stringDataOffset);
-        LOGGER.debug("secondmagic:{}", secondMagicIdentifier);
+        LOGGER.trace("firstmagic:{}", firstMagicIdentifier);
+        LOGGER.trace("strings offset:{}", stringDataOffset);
+        LOGGER.trace("secondmagic:{}", secondMagicIdentifier);
         if (this.pkbVersion.hasExtraBufferData()) {
             resurrectBuffer = new int[someResurrectedIdentifier * 2];
             for (int i = 0; i < resurrectBuffer.length; i++) {
@@ -91,9 +94,9 @@ public class HorriblePkbParser implements Serializable {
             }
             chunks.add(new UnknownChunk(messageType, chunkContentsBuffer));
             if (messageType > 400) {
-                LOGGER.debug("length:{}", length);
+                LOGGER.trace("length:{}", length);
                 String msgType = messageType + "\t" + Integer.toHexString(messageType) + "\t" + Integer.toBinaryString(messageType) + "\t" + new War3ID(messageType) + "\t";
-                LOGGER.debug("messageType:{}", msgType);
+                LOGGER.trace("messageType:{}", msgType);
             }
             Set<Integer> lens = MESSAGE_TYPES_TO_LENS.computeIfAbsent(messageType, k -> new TreeSet<>());
             lens.add(length);
@@ -160,7 +163,7 @@ public class HorriblePkbParser implements Serializable {
         for (final PKBChunk chunk : chunks) {
             buffer.putInt(chunk.getByteLength() + 5);
             buffer.put((byte) 0x20); // the magic 32
-            buffer.putInt(chunk.getChunkType());
+            buffer.putInt(chunk.chunkType());
             chunk.write(buffer);
         }
         buffer.putInt(strings.size());

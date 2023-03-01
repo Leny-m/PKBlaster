@@ -21,8 +21,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class HorriblePKBlasterPanel extends JPanel {
-    private static final Logger LOGGER = LoggerFactory.getLogger(HorriblePKBlasterPanel.class);
+public class PKBPanel extends JPanel {
+    private static final Logger LOGGER = LoggerFactory.getLogger(PKBPanel.class);
     @Serial
     private static final long serialVersionUID = 350821597211603910L;
 
@@ -71,7 +71,7 @@ public class HorriblePKBlasterPanel extends JPanel {
     private final JLabel infoLabel;
     private final JLabel stringLabel;
     private final JTextField stringField;
-    private HorriblePkbParser currentPKB;
+    private PKBParser currentPKB;
     private final JFileChooser fileChooser;
     private final JList<String> stringsList;
     private final JList<PKBChunk> nodesList;
@@ -79,7 +79,7 @@ public class HorriblePKBlasterPanel extends JPanel {
     private final DefaultListModel<String> stringListModel;
     private final DefaultListModel<PKBChunk> nodeListModel;
 
-    public HorriblePKBlasterPanel() {
+    public PKBPanel() {
         fileChooser = new JFileChooser(new File("sharedfx"));
         fileChooser.addChoosableFileFilter(new FileNameExtensionFilter("Dumb PKB Baked Binary", "pkb"));
         setLayout(new BorderLayout());
@@ -200,13 +200,12 @@ public class HorriblePKBlasterPanel extends JPanel {
                 nodeLabel.setText("Node " + selectedIndex + ": " + chunk.toString() + " (Length "
                         + chunk.getByteLength() + ")");
                 if (chunk instanceof UnknownChunk unknownChunk) {
-                    unknownChunkTable.setModel(new UnknownChunkTableModel(unknownChunk.getChunkData()));
+                    unknownChunkTable.setModel(new UnknownChunkTableModel(unknownChunk.chunkData()));
                 }
             }
         });
 
-        final JSplitPane nodesSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, new JScrollPane(nodesList),
-                editNodePanel);
+        final JSplitPane nodesSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, new JScrollPane(nodesList), editNodePanel);
         advancedPane.addTab("Nodes", nodesSplitPane);
 
         stringListModel = new DefaultListModel<>();
@@ -327,7 +326,7 @@ public class HorriblePKBlasterPanel extends JPanel {
         performSwap.addActionListener(e -> {
             try {
                 if (currentPKB == null) {
-                    JOptionPane.showMessageDialog(HorriblePKBlasterPanel.this, "No file loaded!", "Error",
+                    JOptionPane.showMessageDialog(PKBPanel.this, "No file loaded!", "Error",
                             JOptionPane.ERROR_MESSAGE);
                 } else {
                     final OldColor newRedIndex = (OldColor) newRedSourceBox.getSelectedItem();
@@ -337,9 +336,9 @@ public class HorriblePKBlasterPanel extends JPanel {
                     final List<SwappedColor> swappedColors = new ArrayList<>();
                     for (final PKBChunk chunk : currentPKB.getChunks()) {
                         if (chunk instanceof final UnknownChunk c) {
-                            if (currentPKB.getStrings().get(c.getChunkType())
+                            if (currentPKB.getStrings().get(c.chunkType())
                                     .equals("CParticleNodeSamplerData_Curve")) {
-                                final ByteBuffer data = c.getChunkData();
+                                final ByteBuffer data = c.chunkData();
                                 data.order(ByteOrder.LITTLE_ENDIAN);
                                 data.clear();
                                 final short groupCount = data.getShort();
@@ -520,7 +519,7 @@ public class HorriblePKBlasterPanel extends JPanel {
                             swappedColors);
                     final JScrollPane preview = new JScrollPane(colorSwapPreviewPanel);
                     preview.setPreferredSize(new Dimension(800, 600));
-                    JOptionPane.showMessageDialog(HorriblePKBlasterPanel.this, preview);
+                    JOptionPane.showMessageDialog(PKBPanel.this, preview);
                 }
             } catch (final Exception exc) {
                 exc.printStackTrace();
@@ -545,7 +544,7 @@ public class HorriblePKBlasterPanel extends JPanel {
         final ColorChooserIcon colorChooserIcon = new ColorChooserIcon(currentColorizeColor, color -> currentColorizeColor = color);
         final JLabel newRedLabel = new JLabel("New Color:");
         final JButton performSwap = new JButton("Perform Colorize!");
-        performSwap.addActionListener(e -> ColorSwap.colorize(currentPKB, currentColorizeColor, HorriblePKBlasterPanel.this));
+        performSwap.addActionListener(e -> ColorSwap.colorize(currentPKB, currentColorizeColor, PKBPanel.this));
 
         final GroupLayout colorSwapLayout = new GroupLayout(colorize);
         colorSwapLayout.setHorizontalGroup(colorSwapLayout.createParallelGroup()
@@ -574,14 +573,14 @@ public class HorriblePKBlasterPanel extends JPanel {
         final PKBChunk value2 = (PKBChunk) value;
         String suffix = "";
         if (value2.getByteLength() >= 8 && value2 instanceof UnknownChunk unknownChunk) {
-            final ByteBuffer chunkData = (unknownChunk).getChunkData();
+            final ByteBuffer chunkData = (unknownChunk).chunkData();
             chunkData.order(ByteOrder.LITTLE_ENDIAN);
             final int chunkDataValue = chunkData.getInt(4);
             if (chunkDataValue >= 0 && chunkDataValue < stringListModel.size()) {
                 suffix = " \"" + stringListModel.get(chunkDataValue) + "\"";
             }
         }
-        return stringListModel.get(value2.getChunkType()) + suffix;
+        return stringListModel.get(value2.chunkType()) + suffix;
     }
 
     protected void populateUI() {
@@ -603,7 +602,7 @@ public class HorriblePKBlasterPanel extends JPanel {
 
         final JMenuItem openItem = new JMenuItem("Open");
         openItem.addActionListener(e -> {
-            if (fileChooser.showOpenDialog(HorriblePKBlasterPanel.this) == JFileChooser.APPROVE_OPTION) {
+            if (fileChooser.showOpenDialog(PKBPanel.this) == JFileChooser.APPROVE_OPTION) {
                 final File selectedFile = fileChooser.getSelectedFile();
                 if (selectedFile != null) {
 
@@ -611,7 +610,7 @@ public class HorriblePKBlasterPanel extends JPanel {
                     try (FileChannel channel = FileChannel.open(selectedFile.toPath(), StandardOpenOption.READ)) {
                         channel.read(stupidBuffer2);
                         stupidBuffer2.clear();
-                        currentPKB = new HorriblePkbParser(stupidBuffer2);
+                        currentPKB = new PKBParser(stupidBuffer2);
                         populateUI();
                     } catch (final IOException e1) {
                         e1.printStackTrace();
@@ -624,7 +623,7 @@ public class HorriblePKBlasterPanel extends JPanel {
 
         final JMenuItem saveItem = new JMenuItem("Save");
         saveItem.addActionListener(e -> {
-            if (fileChooser.showSaveDialog(HorriblePKBlasterPanel.this) == JFileChooser.APPROVE_OPTION) {
+            if (fileChooser.showSaveDialog(PKBPanel.this) == JFileChooser.APPROVE_OPTION) {
                 final File selectedFile = fileChooser.getSelectedFile();
                 if (selectedFile != null) {
 
