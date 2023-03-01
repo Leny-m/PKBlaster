@@ -197,8 +197,7 @@ public class PKBPanel extends JPanel {
                 nodeLabel.setText("Select a node....");
             } else {
                 final PKBChunk chunk = nodeListModel.getElementAt(selectedIndex);
-                nodeLabel.setText("Node " + selectedIndex + ": " + chunk.toString() + " (Length "
-                        + chunk.getByteLength() + ")");
+                nodeLabel.setText("Node " + selectedIndex + ": " + chunk.toString() + " (Length " + chunk.getByteLength() + ")");
                 if (chunk instanceof UnknownChunk unknownChunk) {
                     unknownChunkTable.setModel(new UnknownChunkTableModel(unknownChunk.chunkData()));
                 }
@@ -238,8 +237,7 @@ public class PKBPanel extends JPanel {
             }
         });
 
-        final JSplitPane stringsSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, new JScrollPane(stringsList),
-                editStringPanel);
+        final JSplitPane stringsSplitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, new JScrollPane(stringsList), editStringPanel);
         advancedPane.addTab("Strings", stringsSplitPane);
 
         final JTabbedPane automationTabbedPane = new JTabbedPane(SwingConstants.LEFT);
@@ -416,7 +414,9 @@ public class PKBPanel extends JPanel {
                                                     data.putFloat(floatStartPos + i * 16 + 12, newAlpha);
                                                     swappedColors.add(new SwappedColor(
                                                             createColor(oldRed, oldGreen, oldBlue, oldAlpha),
-                                                            createColor(newRed, newGreen, newBlue, newAlpha)));
+                                                            createColor(newRed, newGreen, newBlue, newAlpha),
+                                                            "CParticleNodeSamplerData_Curve(12)"
+                                                    ));
 
                                                 }
                                                 data.position(floatStartPos + 3 * 16);
@@ -458,7 +458,9 @@ public class PKBPanel extends JPanel {
                                                     data.putFloat(floatStartPos + i * 16 + 12, newAlpha);
                                                     swappedColors.add(new SwappedColor(
                                                             createColor(oldRed, oldGreen, oldBlue, oldAlpha),
-                                                            createColor(newRed, newGreen, newBlue, newAlpha)));
+                                                            createColor(newRed, newGreen, newBlue, newAlpha),
+                                                            "CParticleNodeSamplerData_Curve(24)"
+                                                    ));
                                                 }
                                                 data.position(floatStartPos + 24 * 4);
                                             } else if (numberOfFloats == 20) {
@@ -488,7 +490,9 @@ public class PKBPanel extends JPanel {
                                                     data.putFloat(floatStartPos + i * 16 + 12, newAlpha);
                                                     swappedColors.add(new SwappedColor(
                                                             createColor(oldRed, oldGreen, oldBlue, oldAlpha),
-                                                            createColor(newRed, newGreen, newBlue, newAlpha)));
+                                                            createColor(newRed, newGreen, newBlue, newAlpha),
+                                                            "CParticleNodeSamplerData_Curve(20)"
+                                                    ));
                                                 }
                                                 data.position(floatStartPos + 20 * 4);
                                             } else {
@@ -515,8 +519,7 @@ public class PKBPanel extends JPanel {
                             }
                         }
                     }
-                    final ColorSwapPreviewPanel colorSwapPreviewPanel = new ColorSwapPreviewPanel(
-                            swappedColors);
+                    final ColorSwapPreviewPanel colorSwapPreviewPanel = new ColorSwapPreviewPanel(swappedColors);
                     final JScrollPane preview = new JScrollPane(colorSwapPreviewPanel);
                     preview.setPreferredSize(new Dimension(800, 600));
                     JOptionPane.showMessageDialog(PKBPanel.this, preview);
